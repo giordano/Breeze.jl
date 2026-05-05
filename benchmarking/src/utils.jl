@@ -52,10 +52,22 @@ function benchmark_time_stepping(model;
     if verbose
         @info "  Running benchmark..."
     end
+    dev = first(CUDA.NVML.devices())
+    energy_start = CUDA.NVML.energy_consumption(dev)
     start_time = time_ns()
     many_time_steps!(model, Δt, time_steps)
     synchronize_device(arch)
     end_time = time_ns()
+    energy_end = CUDA.NVML.energy_consumption(dev)
+
+    # Convert energy usage from Joule to Watt-Hour
+    energy_wh = (energy_end - energy_start) / 3600
+    json = """
+    {
+      "energy": $(energy_wh)
+    }
+    """
+    write("energy.json", json)
 
     total_time_seconds = (end_time - start_time) / 1e9
     time_per_step_seconds = total_time_seconds / time_steps
